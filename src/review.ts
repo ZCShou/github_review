@@ -11,7 +11,7 @@ import {
 import { requestModelReview } from "./model.js";
 import type { InlineComment, ModelFinding, ModelReview, PullDetails, PullFile, ReviewConfig, ReviewInput } from "./types.js";
 
-const REVIEW_MARKER_PREFIX = "<!-- tgos-review-bot:";
+const REVIEW_MARKER_PREFIX = "<!-- tgosbot:";
 
 export async function createCodeReview(
   context: Context,

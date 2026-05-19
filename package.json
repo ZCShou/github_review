@@ -1,5 +1,5 @@
 {
-  "name": "tgos-review-bot",
+  "name": "tgosbot",
   "version": "1.0.0",
   "private": true,
   "description": "GitHub App PR review bot built with Probot and TypeScript.",

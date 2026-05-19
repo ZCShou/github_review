@@ -1,6 +1,6 @@
-# tgos-review-bot
+# tgosbot
 
-tgos-review-bot 是一个基于 GitHub App 的 AI PR Review 机器人。它会读取 PR diff，调用 DeepSeek 或 OpenAI-compatible 模型生成结构化审阅结果，并把可定位的问题发布为 GitHub inline review comments。
+tgosbot 是一个基于 GitHub App 的 AI PR Review 机器人。它会读取 PR diff，调用 DeepSeek 或 OpenAI-compatible 模型生成结构化审阅结果，并把可定位的问题发布为 GitHub inline review comments。
 
 ## 简介
 
@@ -134,7 +134,7 @@ REASONING_EFFORT=medium
 
 示例约定：
 
-- 项目目录：任意目录，例如 `~/github_review` 或 `/opt/tgos-review-bot`
+- 项目目录：任意目录，例如 `~/tgosbot` 或 `/opt/tgosbot`
 - 本地端口：`3456`
 - 域名：`review.muxai.net`
 - GitHub App Webhook URL：`https://review.muxai.net/api/github/webhooks`
@@ -142,8 +142,8 @@ REASONING_EFFORT=medium
 ### 准备项目
 
 ```bash
-git clone <repo-url> github_review
-cd github_review
+git clone <repo-url> tgosbot
+cd tgosbot
 npm ci
 cp .env.example .env
 nano .env
@@ -182,15 +182,15 @@ pm2 start deploy/pm2/ecosystem.config.cjs
 pm2 save
 ```
 
-PM2 配置会自动以项目根目录作为 `cwd`，不需要把项目固定放在 `/opt/tgos-review-bot`。日志使用 PM2 默认位置，通常是当前用户的 `~/.pm2/logs`，不需要写入 `/var/log/pm2`。
+PM2 配置会自动以项目根目录作为 `cwd`，不需要把项目固定放在 `/opt/tgosbot`。日志使用 PM2 默认位置，通常是当前用户的 `~/.pm2/logs`，不需要写入 `/var/log/pm2`。
 
 常用命令：
 
 ```bash
 pm2 status
-pm2 logs tgos-review-bot
-pm2 restart tgos-review-bot
-pm2 stop tgos-review-bot
+pm2 logs tgosbot
+pm2 restart tgosbot
+pm2 stop tgosbot
 ```
 
 如服务器重启后需要自动恢复 PM2 进程：
@@ -251,7 +251,7 @@ Webhook events：
 查看 PM2 日志：
 
 ```bash
-pm2 logs tgos-review-bot
+pm2 logs tgosbot
 ```
 
 如果 webhook 未到达，优先检查：

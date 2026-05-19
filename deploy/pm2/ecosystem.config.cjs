@@ -5,7 +5,7 @@ const projectRoot = path.resolve(__dirname, "..", "..");
 module.exports = {
   apps: [
     {
-      name: "tgos-review-bot",
+      name: "tgosbot",
       cwd: projectRoot,
       script: "/usr/bin/env",
       args: "start",

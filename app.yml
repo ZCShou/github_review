@@ -1,4 +1,4 @@
-name: tgos-review-bot
+name: tgosbot
 description: Submit AI pull request reviews with validated inline comments.
 public: false
 default_events:
