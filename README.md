@@ -215,6 +215,7 @@ NODE_ENV=production
 AI_PROVIDER=deepseek
 AI_MODEL=deepseek-v4-pro
 AI_BASE_URL=https://api.deepseek.com
+AI_REQUEST_TIMEOUT_MS=300000
 ```
 
 启动 PM2：

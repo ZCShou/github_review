@@ -123,10 +123,11 @@ async function fetchJsonWithRetry(
 
       lastError = new Error(message);
     } catch (error) {
-      lastError = error;
+      const normalizedError = normalizeRequestError(error, config.requestTimeoutMs);
+      lastError = normalizedError;
 
       if (!isRetryableError(error) || attempt >= config.maxRetries) {
-        throw error;
+        throw normalizedError;
       }
     } finally {
       clearTimeout(timeout);
@@ -368,6 +369,14 @@ function isRetryableError(error: unknown): boolean {
     (error instanceof DOMException && error.name === "AbortError") ||
     (error instanceof TypeError && error.message.toLowerCase().includes("fetch"))
   );
+}
+
+function normalizeRequestError(error: unknown, timeoutMs: number): Error {
+  if (error instanceof DOMException && error.name === "AbortError") {
+    return new Error(`AI API request timed out after ${timeoutMs}ms.`);
+  }
+
+  return error instanceof Error ? error : new Error("AI API request failed.");
 }
 
 function retryDelayMs(attempt: number): number {

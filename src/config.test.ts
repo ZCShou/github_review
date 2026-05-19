@@ -20,6 +20,7 @@ describe("review config", () => {
     expect(config.provider).toBe("deepseek");
     expect(config.model).toBe("deepseek-v4-pro");
     expect(config.apiBaseUrl).toBe("https://api.deepseek.com");
+    expect(config.requestTimeoutMs).toBe(300_000);
   });
 
   it("supports OpenAI-compatible configuration", () => {

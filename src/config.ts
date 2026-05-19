@@ -19,7 +19,7 @@ export function readReviewConfig(): ReviewConfig {
     maxPatchChars: readNumberEnv("REVIEW_MAX_PATCH_CHARS", 120_000),
     maxInlineComments: readNumberEnv("REVIEW_MAX_INLINE_COMMENTS", 30),
     maxOutputTokens: readNumberEnv("AI_MAX_OUTPUT_TOKENS", 8_000),
-    requestTimeoutMs: readNumberEnv("AI_REQUEST_TIMEOUT_MS", 120_000),
+    requestTimeoutMs: readNumberEnv("AI_REQUEST_TIMEOUT_MS", provider === "deepseek" ? 300_000 : 120_000),
     maxRetries: readNumberEnv("AI_MAX_RETRIES", 2, { allowZero: true }),
     apiKey: process.env.AI_API_KEY,
     apiBaseUrl: readBaseUrl(provider),
