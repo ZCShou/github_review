@@ -8,7 +8,7 @@ module.exports = {
       name: "tgosbot",
       cwd: projectRoot,
       script: "/usr/bin/env",
-      args: "start",
+      args: "npm start",
       interpreter: "none",
       instances: 1,
       exec_mode: "fork",

@@ -193,6 +193,14 @@ pm2 restart tgosbot
 pm2 stop tgosbot
 ```
 
+如果改过 PM2 配置，重新加载：
+
+```bash
+pm2 delete tgosbot
+pm2 start deploy/pm2/ecosystem.config.cjs
+pm2 save
+```
+
 如服务器重启后需要自动恢复 PM2 进程：
 
 ```bash
