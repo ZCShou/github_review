@@ -100,6 +100,139 @@ npm start
 
 机器人会立即对该 PR 执行一次审阅。
 
+## 部署
+
+项目提供 PM2 和 Caddy 部署模板：
+
+- [deploy/ecosystem.config.cjs](/home/zcs/WORKSPACE/bot/deploy/ecosystem.config.cjs:1)
+- [deploy/caddy.review.muxai.net.conf](/home/zcs/WORKSPACE/bot/deploy/caddy.review.muxai.net.conf:1)
+
+示例约定：
+
+- 项目目录：`/opt/tgos-review-bot`
+- 本地端口：`3456`
+- 域名：`review.muxai.net`
+- GitHub App Webhook URL：`https://review.muxai.net/api/github/webhooks`
+
+### 准备项目
+
+```bash
+cd /opt
+git clone <repo-url> tgos-review-bot
+cd /opt/tgos-review-bot
+npm ci
+cp .env.example .env
+nano .env
+npm run build
+```
+
+生产环境至少需要填写：
+
+- `APP_ID`
+- `PRIVATE_KEY`
+- `WEBHOOK_SECRET`
+- `OPENAI_API_KEY`
+
+建议设置：
+
+```env
+PORT=3456
+NODE_ENV=production
+```
+
+保护环境变量文件：
+
+```bash
+chmod 600 .env
+```
+
+### PM2
+
+启动：
+
+```bash
+pm2 start deploy/ecosystem.config.cjs
+pm2 save
+```
+
+常用命令：
+
+```bash
+pm2 status
+pm2 logs tgos-review-bot
+pm2 restart tgos-review-bot
+pm2 stop tgos-review-bot
+```
+
+如服务器重启后需要自动恢复 PM2 进程：
+
+```bash
+pm2 startup
+pm2 save
+```
+
+### Caddy
+
+复制站点配置：
+
+```bash
+sudo cp deploy/caddy.review.muxai.net.conf /etc/caddy/sites/review.muxai.net.conf
+sudo caddy validate --config /etc/caddy/Caddyfile
+sudo systemctl reload caddy
+```
+
+确保 `/etc/caddy/Caddyfile` 中包含：
+
+```caddy
+import /etc/caddy/sites/*.conf
+```
+
+如果使用其他域名，修改 [deploy/caddy.review.muxai.net.conf](/home/zcs/WORKSPACE/bot/deploy/caddy.review.muxai.net.conf:1) 中的域名，并同步修改 GitHub App 的 Webhook URL。
+
+### GitHub App
+
+GitHub App Webhook URL：
+
+```text
+https://review.muxai.net/api/github/webhooks
+```
+
+Webhook secret 必须和 `.env` 中的 `WEBHOOK_SECRET` 一致。
+
+Repository permissions：
+
+- Contents: read
+- Pull requests: read and write
+- Issues: read and write
+- Metadata: read
+
+Webhook events：
+
+- Pull request
+- Issue comment
+
+### 验证
+
+打开一个安装了 GitHub App 的仓库 PR，或在 PR 评论区发送：
+
+```text
+/review
+```
+
+查看 PM2 日志：
+
+```bash
+pm2 logs tgos-review-bot
+```
+
+如果 webhook 未到达，优先检查：
+
+- DNS 是否指向服务器
+- Caddy 配置是否加载
+- GitHub App Webhook URL 是否为 `/api/github/webhooks`
+- `WEBHOOK_SECRET` 是否一致
+- PM2 进程是否运行在 `PORT=3456`
+
 ## 贡献
 
 欢迎提交 issue 和 pull request。建议在提交前运行：
