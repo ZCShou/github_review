@@ -134,7 +134,7 @@ REASONING_EFFORT=medium
 
 示例约定：
 
-- 项目目录：`/opt/tgos-review-bot`
+- 项目目录：任意目录，例如 `~/github_review` 或 `/opt/tgos-review-bot`
 - 本地端口：`3456`
 - 域名：`review.muxai.net`
 - GitHub App Webhook URL：`https://review.muxai.net/api/github/webhooks`
@@ -142,9 +142,8 @@ REASONING_EFFORT=medium
 ### 准备项目
 
 ```bash
-cd /opt
-git clone <repo-url> tgos-review-bot
-cd /opt/tgos-review-bot
+git clone <repo-url> github_review
+cd github_review
 npm ci
 cp .env.example .env
 nano .env
@@ -182,6 +181,8 @@ chmod 600 .env
 pm2 start deploy/pm2/ecosystem.config.cjs
 pm2 save
 ```
+
+PM2 配置会自动以项目根目录作为 `cwd`，不需要把项目固定放在 `/opt/tgos-review-bot`。日志使用 PM2 默认位置，通常是当前用户的 `~/.pm2/logs`，不需要写入 `/var/log/pm2`。
 
 常用命令：
 

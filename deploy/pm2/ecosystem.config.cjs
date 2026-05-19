@@ -1,10 +1,15 @@
+const path = require("path");
+
+const projectRoot = path.resolve(__dirname, "..", "..");
+
 module.exports = {
   apps: [
     {
       name: "tgos-review-bot",
-      cwd: "/opt/tgos-review-bot",
-      script: "npm",
+      cwd: projectRoot,
+      script: "/usr/bin/env",
       args: "start",
+      interpreter: "none",
       instances: 1,
       exec_mode: "fork",
       autorestart: true,
@@ -14,8 +19,6 @@ module.exports = {
         NODE_ENV: "production",
         PORT: "3456",
       },
-      error_file: "/var/log/pm2/tgos-review-bot-error.log",
-      out_file: "/var/log/pm2/tgos-review-bot-out.log",
       log_date_format: "YYYY-MM-DD HH:mm:ss Z",
     },
   ],
