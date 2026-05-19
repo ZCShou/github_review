@@ -1,0 +1,11 @@
+name: tgos-review-bot
+description: Submit AI pull request reviews with validated inline comments.
+public: false
+default_events:
+  - pull_request
+  - issue_comment
+default_permissions:
+  contents: read
+  issues: write
+  metadata: read
+  pull_requests: write
