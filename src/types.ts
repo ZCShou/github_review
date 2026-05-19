@@ -29,6 +29,7 @@ export type PullDetails = {
 };
 
 export type ReviewConfig = {
+  provider: "openai" | "deepseek";
   autoReviewPrEvents: boolean;
   reviewDrafts: boolean;
   skipDuplicateReviews: boolean;
@@ -42,8 +43,8 @@ export type ReviewConfig = {
   maxOutputTokens: number;
   requestTimeoutMs: number;
   maxRetries: number;
-  openAiApiKey?: string;
-  openAiBaseUrl: string;
+  apiKey?: string;
+  apiBaseUrl: string;
 };
 
 export type AnnotatedFile = PullFile & {

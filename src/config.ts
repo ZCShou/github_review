@@ -1,25 +1,54 @@
 import type { ReviewConfig } from "./types.js";
 
 const DEFAULT_OPENAI_BASE_URL = "https://api.openai.com/v1";
+const DEFAULT_DEEPSEEK_BASE_URL = "https://api.deepseek.com";
 
 export function readReviewConfig(): ReviewConfig {
+  const provider = readProvider();
+
   return {
+    provider,
     autoReviewPrEvents: readBooleanEnv("AUTO_REVIEW_PR_EVENTS", true),
     reviewDrafts: readBooleanEnv("REVIEW_DRAFTS", false),
     skipDuplicateReviews: readBooleanEnv("SKIP_DUPLICATE_REVIEWS", true),
     postFailureReviews: readBooleanEnv("POST_FAILURE_REVIEWS", false),
     enableSuggestions: readBooleanEnv("ENABLE_REVIEW_SUGGESTIONS", false),
-    model: process.env.OPENAI_MODEL ?? "gpt-5.5",
-    reasoningEffort: process.env.OPENAI_REASONING_EFFORT ?? "medium",
+    model: readModel(provider),
+    reasoningEffort: process.env.REASONING_EFFORT ?? defaultReasoningEffort(provider),
     maxFiles: readNumberEnv("REVIEW_MAX_FILES", 30),
     maxPatchChars: readNumberEnv("REVIEW_MAX_PATCH_CHARS", 120_000),
     maxInlineComments: readNumberEnv("REVIEW_MAX_INLINE_COMMENTS", 30),
-    maxOutputTokens: readNumberEnv("OPENAI_MAX_OUTPUT_TOKENS", 8_000),
-    requestTimeoutMs: readNumberEnv("OPENAI_REQUEST_TIMEOUT_MS", 120_000),
-    maxRetries: readNumberEnv("OPENAI_MAX_RETRIES", 2, { allowZero: true }),
-    openAiApiKey: process.env.OPENAI_API_KEY,
-    openAiBaseUrl: (process.env.OPENAI_BASE_URL ?? DEFAULT_OPENAI_BASE_URL).replace(/\/$/, ""),
+    maxOutputTokens: readNumberEnv("AI_MAX_OUTPUT_TOKENS", 8_000),
+    requestTimeoutMs: readNumberEnv("AI_REQUEST_TIMEOUT_MS", 120_000),
+    maxRetries: readNumberEnv("AI_MAX_RETRIES", 2, { allowZero: true }),
+    apiKey: process.env.AI_API_KEY,
+    apiBaseUrl: readBaseUrl(provider),
   };
+}
+
+function readProvider(): ReviewConfig["provider"] {
+  const provider = (process.env.AI_PROVIDER ?? "deepseek").toLowerCase();
+
+  if (provider === "openai" || provider === "deepseek") {
+    return provider;
+  }
+
+  return "deepseek";
+}
+
+function readModel(provider: ReviewConfig["provider"]): string {
+  return process.env.AI_MODEL ?? (provider === "deepseek" ? "deepseek-v4-pro" : "gpt-5.5");
+}
+
+function readBaseUrl(provider: ReviewConfig["provider"]): string {
+  const defaultBaseUrl = provider === "deepseek" ? DEFAULT_DEEPSEEK_BASE_URL : DEFAULT_OPENAI_BASE_URL;
+  const baseUrl = process.env.AI_BASE_URL ?? defaultBaseUrl;
+
+  return baseUrl.replace(/\/$/, "");
+}
+
+function defaultReasoningEffort(provider: ReviewConfig["provider"]): string {
+  return provider === "deepseek" ? "high" : "medium";
 }
 
 function readBooleanEnv(name: string, defaultValue: boolean): boolean {

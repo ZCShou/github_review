@@ -1,6 +1,6 @@
 # tgos-review-bot
 
-tgos-review-bot 是一个基于 GitHub App 的 AI PR Review 机器人。它会读取 PR diff，调用 OpenAI-compatible 模型生成结构化审阅结果，并把可定位的问题发布为 GitHub inline review comments。
+tgos-review-bot 是一个基于 GitHub App 的 AI PR Review 机器人。它会读取 PR diff，调用 DeepSeek 或 OpenAI-compatible 模型生成结构化审阅结果，并把可定位的问题发布为 GitHub inline review comments。
 
 ## 简介
 
@@ -18,7 +18,7 @@ GitHub Webhook
   -> Probot event handler
   -> Pull Request files and patch loader
   -> Diff annotator
-  -> OpenAI-compatible review model
+  -> DeepSeek or OpenAI-compatible review model
   -> Finding validator
   -> GitHub review with inline comments
 ```
@@ -70,15 +70,16 @@ npm start
 
 必填 AI 审阅配置：
 
-- `OPENAI_API_KEY`
+- `AI_API_KEY`
 
 常用可选配置：
 
-- `OPENAI_MODEL`: 审阅模型，默认 `gpt-5.5`
-- `OPENAI_REASONING_EFFORT`: 推理强度，默认 `medium`
-- `OPENAI_BASE_URL`: OpenAI-compatible API 地址
-- `OPENAI_REQUEST_TIMEOUT_MS`: 单次模型请求超时时间
-- `OPENAI_MAX_RETRIES`: 可重试模型错误的最大重试次数
+- `AI_PROVIDER`: 模型提供方，支持 `deepseek` 和 `openai`，默认 `deepseek`
+- `AI_MODEL`: 审阅模型，DeepSeek 默认 `deepseek-v4-pro`
+- `REASONING_EFFORT`: 推理强度，DeepSeek 会映射为 `high` 或 `max`
+- `AI_BASE_URL`: OpenAI-compatible API 地址，DeepSeek 默认 `https://api.deepseek.com`
+- `AI_REQUEST_TIMEOUT_MS`: 单次模型请求超时时间
+- `AI_MAX_RETRIES`: 可重试模型错误的最大重试次数
 - `AUTO_REVIEW_PR_EVENTS`: 是否自动审阅 PR 事件
 - `REVIEW_DRAFTS`: 是否审阅 draft PR
 - `SKIP_DUPLICATE_REVIEWS`: 是否跳过同一 PR head SHA 的重复自动审阅
@@ -89,6 +90,30 @@ npm start
 - `REVIEW_MAX_INLINE_COMMENTS`: 单次 review 最多 inline 评论数
 
 完整说明见 [.env.example](/home/zcs/WORKSPACE/bot/.env.example:1)。
+
+### DeepSeek
+
+默认配置使用 DeepSeek：
+
+```env
+AI_PROVIDER=deepseek
+AI_API_KEY=sk-...
+AI_MODEL=deepseek-v4-pro
+AI_BASE_URL=https://api.deepseek.com
+REASONING_EFFORT=high
+```
+
+DeepSeek 使用 OpenAI-compatible Chat Completions API，机器人会自动切换到 `/chat/completions` 并要求模型返回 JSON。
+
+如需切回 OpenAI：
+
+```env
+AI_PROVIDER=openai
+AI_API_KEY=sk-...
+AI_MODEL=gpt-5.5
+AI_BASE_URL=https://api.openai.com/v1
+REASONING_EFFORT=medium
+```
 
 ### 手动触发
 
@@ -104,8 +129,8 @@ npm start
 
 项目提供 PM2 和 Caddy 部署模板：
 
-- [deploy/ecosystem.config.cjs](/home/zcs/WORKSPACE/bot/deploy/ecosystem.config.cjs:1)
-- [deploy/caddy.review.muxai.net.conf](/home/zcs/WORKSPACE/bot/deploy/caddy.review.muxai.net.conf:1)
+- [deploy/pm2/ecosystem.config.cjs](/home/zcs/WORKSPACE/bot/deploy/pm2/ecosystem.config.cjs:1)
+- [deploy/caddy/review.muxai.net.conf](/home/zcs/WORKSPACE/bot/deploy/caddy/review.muxai.net.conf:1)
 
 示例约定：
 
@@ -131,13 +156,16 @@ npm run build
 - `APP_ID`
 - `PRIVATE_KEY`
 - `WEBHOOK_SECRET`
-- `OPENAI_API_KEY`
+- `AI_API_KEY`
 
 建议设置：
 
 ```env
 PORT=3456
 NODE_ENV=production
+AI_PROVIDER=deepseek
+AI_MODEL=deepseek-v4-pro
+AI_BASE_URL=https://api.deepseek.com
 ```
 
 保护环境变量文件：
@@ -151,7 +179,7 @@ chmod 600 .env
 启动：
 
 ```bash
-pm2 start deploy/ecosystem.config.cjs
+pm2 start deploy/pm2/ecosystem.config.cjs
 pm2 save
 ```
 
@@ -176,7 +204,7 @@ pm2 save
 复制站点配置：
 
 ```bash
-sudo cp deploy/caddy.review.muxai.net.conf /etc/caddy/sites/review.muxai.net.conf
+sudo cp deploy/caddy/review.muxai.net.conf /etc/caddy/sites/review.muxai.net.conf
 sudo caddy validate --config /etc/caddy/Caddyfile
 sudo systemctl reload caddy
 ```
@@ -187,7 +215,7 @@ sudo systemctl reload caddy
 import /etc/caddy/sites/*.conf
 ```
 
-如果使用其他域名，修改 [deploy/caddy.review.muxai.net.conf](/home/zcs/WORKSPACE/bot/deploy/caddy.review.muxai.net.conf:1) 中的域名，并同步修改 GitHub App 的 Webhook URL。
+如果使用其他域名，修改 [deploy/caddy/review.muxai.net.conf](/home/zcs/WORKSPACE/bot/deploy/caddy/review.muxai.net.conf:1) 中的域名，并同步修改 GitHub App 的 Webhook URL。
 
 ### GitHub App
 

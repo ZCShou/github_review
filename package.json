@@ -8,7 +8,7 @@
   "scripts": {
     "build": "tsc",
     "start": "probot run ./lib/index.js",
-    "test": "vitest src/diff.test.ts src/review.test.ts"
+    "test": "vitest src/config.test.ts src/diff.test.ts src/review.test.ts"
   },
   "dependencies": {
     "probot": "^14.3.2"

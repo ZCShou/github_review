@@ -42,11 +42,11 @@ export function buildMissingApiKeyBody(files: PullFile[], reason: ReviewReason):
   const trigger = reason === "manual" ? "收到 `/review`，但" : "PR 更新后，";
 
   return [
-    `${trigger}自动审查未执行：未配置 \`OPENAI_API_KEY\`。`,
+    `${trigger}自动审查未执行：未配置 \`AI_API_KEY\`。`,
     "",
     `变更规模：${totals.changedFiles} 个文件，+${totals.totalAdditions}/-${totals.totalDeletions}。`,
     "",
-    "配置 `OPENAI_API_KEY` 后，机器人会调用模型分析 diff，并在可定位的新增行上提交 inline review comments。",
+    "配置 `AI_API_KEY` 后，机器人会调用模型分析 diff，并在可定位的新增行上提交 inline review comments。",
   ].join("\n");
 }
 

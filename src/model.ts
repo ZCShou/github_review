@@ -5,7 +5,19 @@ export async function requestModelReview(
   pullRequest: PullDetails,
   preparedDiff: PreparedDiff,
 ): Promise<ModelReview> {
-  const payload = await fetchJsonWithRetry(`${config.openAiBaseUrl}/responses`, config, {
+  if (config.provider === "deepseek") {
+    return requestDeepSeekReview(config, pullRequest, preparedDiff);
+  }
+
+  return requestOpenAiReview(config, pullRequest, preparedDiff);
+}
+
+async function requestOpenAiReview(
+  config: ReviewConfig,
+  pullRequest: PullDetails,
+  preparedDiff: PreparedDiff,
+): Promise<ModelReview> {
+  const payload = await fetchJsonWithRetry(`${config.apiBaseUrl}/responses`, config, {
     model: config.model,
     input: [
       {
@@ -45,6 +57,37 @@ export async function requestModelReview(
   return parseModelReview(payload);
 }
 
+async function requestDeepSeekReview(
+  config: ReviewConfig,
+  pullRequest: PullDetails,
+  preparedDiff: PreparedDiff,
+): Promise<ModelReview> {
+  const payload = await fetchJsonWithRetry(`${config.apiBaseUrl}/chat/completions`, config, {
+    model: config.model,
+    messages: [
+      {
+        role: "system",
+        content: buildSystemPrompt(config),
+      },
+      {
+        role: "user",
+        content: buildUserPrompt(pullRequest, preparedDiff),
+      },
+    ],
+    max_tokens: config.maxOutputTokens,
+    response_format: {
+      type: "json_object",
+    },
+    stream: false,
+    thinking: {
+      type: "enabled",
+    },
+    reasoning_effort: normalizeDeepSeekReasoningEffort(config.reasoningEffort),
+  });
+
+  return parseModelReview(payload);
+}
+
 async function fetchJsonWithRetry(
   url: string,
   config: ReviewConfig,
@@ -61,7 +104,7 @@ async function fetchJsonWithRetry(
         method: "POST",
         signal: controller.signal,
         headers: {
-          "Authorization": `Bearer ${config.openAiApiKey}`,
+          "Authorization": `Bearer ${config.apiKey}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify(body),
@@ -92,7 +135,7 @@ async function fetchJsonWithRetry(
     await delay(retryDelayMs(attempt));
   }
 
-  throw lastError instanceof Error ? lastError : new Error("OpenAI API request failed.");
+  throw lastError instanceof Error ? lastError : new Error("AI API request failed.");
 }
 
 async function parseJsonResponse(response: Response): Promise<unknown> {
@@ -116,6 +159,7 @@ function buildSystemPrompt(config: ReviewConfig): string {
 
   return [
     "You are an expert pull request reviewer.",
+    "You must output valid JSON only.",
     "Review only the diff provided by the user. Do not assume code that is not shown.",
     "Focus on correctness, security, data loss, concurrency, API misuse, regressions, missing validation, and important test gaps.",
     "Avoid style nits, broad refactors, and generic praise.",
@@ -123,6 +167,7 @@ function buildSystemPrompt(config: ReviewConfig): string {
     "For inline findings, choose exact new-file line numbers marked as `R<number> +` in the annotated diff.",
     "If a concern cannot be tied to an added line, put it in general_comments instead of inventing a line number.",
     suggestionInstruction,
+    "Return JSON with this exact shape: {\"summary\":\"string\",\"findings\":[{\"path\":\"string\",\"line\":1,\"severity\":\"critical|high|medium|low\",\"title\":\"string\",\"body\":\"string\",\"suggestion\":null}],\"general_comments\":[\"string\"]}.",
     "Every finding must be actionable and explain the risk.",
   ].join("\n");
 }
@@ -226,6 +271,12 @@ function extractOutputText(payload: unknown): string {
     return payload.output_text;
   }
 
+  const chatContent = extractChatCompletionContent(payload);
+
+  if (chatContent) {
+    return chatContent;
+  }
+
   if (!isRecord(payload) || !Array.isArray(payload.output)) {
     throw new Error("The model response did not include output text.");
   }
@@ -251,6 +302,24 @@ function extractOutputText(payload: unknown): string {
   }
 
   return outputText;
+}
+
+function extractChatCompletionContent(payload: unknown): string | undefined {
+  if (!isRecord(payload) || !Array.isArray(payload.choices)) {
+    return undefined;
+  }
+
+  const choice = payload.choices[0] as unknown;
+
+  if (!isRecord(choice) || !isRecord(choice.message) || typeof choice.message.content !== "string") {
+    return undefined;
+  }
+
+  return choice.message.content;
+}
+
+function normalizeDeepSeekReasoningEffort(reasoningEffort: string): "high" | "max" {
+  return reasoningEffort === "max" || reasoningEffort === "xhigh" ? "max" : "high";
 }
 
 function isModelReview(value: unknown): value is ModelReview {
@@ -284,10 +353,10 @@ function isModelFinding(value: unknown): value is ModelFinding {
 
 function extractApiError(payload: unknown, status: number): string {
   if (isRecord(payload) && isRecord(payload.error) && typeof payload.error.message === "string") {
-    return `OpenAI API error ${status}: ${payload.error.message}`;
+    return `AI API error ${status}: ${payload.error.message}`;
   }
 
-  return `OpenAI API error ${status}`;
+  return `AI API error ${status}`;
 }
 
 function isRetryableStatus(status: number): boolean {

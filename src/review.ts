@@ -32,7 +32,7 @@ export async function createCodeReview(
   const files = await getPullFiles(context, input);
   const preparedDiff = prepareDiff(files, config);
 
-  if (!config.openAiApiKey) {
+  if (!config.apiKey) {
     await submitReview(context, input, pullRequest, {
       body: buildMissingApiKeyBody(files, input.reason),
       comments: [],
