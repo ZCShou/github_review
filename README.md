@@ -1,8 +1,10 @@
 # tgosbot
 
+## 简介
+
 tgosbot 是一个基于 GitHub App 的 AI PR Review 机器人。它会读取 PR diff，调用 DeepSeek 或 OpenAI-compatible 模型生成结构化审阅结果，并把可定位的问题发布为 GitHub inline review comments。
 
-## 简介
+主要能力：
 
 - 自动响应 `pull_request.opened`、`pull_request.reopened`、`pull_request.synchronize`。
 - 支持在 PR 评论区发送 `/review` 手动触发审阅。
@@ -28,39 +30,87 @@ GitHub Webhook
 1. Probot 接收 GitHub App webhook。
 2. 机器人通过 GitHub API 拉取 PR 元信息和 changed files。
 3. `patch` 会被标注为可评论的新文件行号，例如 `R42 + ...`。
-4. 模型只返回结构化 JSON，包括 summary、findings 和 general comments。
+4. 模型返回结构化 JSON，包括 summary、findings 和 general comments。
 5. 机器人校验每条 finding 的 `path` 和 `line` 是否存在于当前 diff 的新增行。
 6. 校验通过的 finding 作为 inline comment 发布；其他意见进入总评。
 
-## 使用
+## 部署
 
-### GitHub App 权限
+### 1. 创建 GitHub App
 
-Repository permissions:
+注意：必须创建 `GitHub App`，不要创建 `OAuth App`。`Client secrets` 不是本项目需要的凭据，本项目需要 GitHub App 的 `Private keys`。
+
+个人账号入口：
+
+```text
+GitHub -> Settings -> Developer settings -> GitHub Apps -> New GitHub App
+```
+
+组织账号入口：
+
+```text
+Organization -> Settings -> Developer settings -> GitHub Apps -> New GitHub App
+```
+
+建议填写：
+
+- GitHub App name: `tgosbot`
+- Homepage URL: 项目仓库地址或服务地址
+- Webhook URL:
+  - 本地调试：Smee URL
+  - 服务器部署：`https://review.muxai.net/api/github/webhooks`
+- Webhook secret: 自己生成随机字符串，并写入 `.env` 的 `WEBHOOK_SECRET`
+
+一键生成安全的 `WEBHOOK_SECRET`：
+
+```bash
+openssl rand -hex 32
+```
+
+创建完成后，在 GitHub App 设置页的 General 页面下获取：
+
+- `APP_ID`: 页面顶部的 App ID
+- `PRIVATE_KEY`: 页面底部 `Private keys` 区域点击 `Generate a private key` 下载 `.pem` 文件
+
+如果页面只看到 `Client secrets`，继续在同一个 `General` 页面向下滚动查找 `Private keys`。如果仍然没有 `Private keys` 区域，通常说明当前进入的是 `OAuth Apps`，需要返回 `Developer settings -> GitHub Apps`。
+
+把 `.pem` 内容写入 `.env`：
+
+```env
+PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----"
+```
+
+也可以用脚本从 `.pem` 生成一行 `.env` 格式：
+
+```bash
+node -e 'const fs=require("fs"); console.log("PRIVATE_KEY=" + JSON.stringify(fs.readFileSync("your.private-key.pem","utf8")))'
+```
+
+### 2. 配置 GitHub App 权限
+
+在 GitHub App 设置页的 Permissions & events 页面中的 Repository permissions：
 
 - Contents: read
 - Pull requests: read and write
 - Issues: read and write, only required for `/review` comments
+- Metadata: read
 
-Webhook events:
+这些默认值也写在 [app.yml](/home/zcs/WORKSPACE/bot/app.yml:1) 中，可用于 GitHub App manifest setup。
+
+然后在同一个 `Permissions & events` 页面找到 `Subscribe to events`，勾选其中的如下两个，最后在底部点击 `Save changes`：
 
 - Pull request
 - Issue comment
 
-这些默认值也写在 [app.yml](/home/zcs/WORKSPACE/bot/app.yml:1) 中，可用于 GitHub App manifest setup。
+### 3. 配置环境变量
 
-### 本地启动
+复制配置模板：
 
 ```bash
-npm install
 cp .env.example .env
-npm run build
-npm start
+nano .env
+chmod 600 .env
 ```
-
-本地 webhook 调试可以创建 Smee channel，并把地址写入 `.env` 的 `WEBHOOK_PROXY_URL`。
-
-### 配置
 
 必填 GitHub App 配置：
 
@@ -72,12 +122,28 @@ npm start
 
 - `AI_API_KEY`
 
+DeepSeek 默认配置：
+
+```env
+AI_PROVIDER=deepseek
+AI_API_KEY=sk-...
+AI_MODEL=deepseek-v4-pro
+AI_BASE_URL=https://api.deepseek.com
+REASONING_EFFORT=high
+```
+
+如需切换到 OpenAI-compatible provider：
+
+```env
+AI_PROVIDER=openai
+AI_API_KEY=sk-...
+AI_MODEL=gpt-5.5
+AI_BASE_URL=https://api.openai.com/v1
+REASONING_EFFORT=medium
+```
+
 常用可选配置：
 
-- `AI_PROVIDER`: 模型提供方，支持 `deepseek` 和 `openai`，默认 `deepseek`
-- `AI_MODEL`: 审阅模型，DeepSeek 默认 `deepseek-v4-pro`
-- `REASONING_EFFORT`: 推理强度，DeepSeek 会映射为 `high` 或 `max`
-- `AI_BASE_URL`: OpenAI-compatible API 地址，DeepSeek 默认 `https://api.deepseek.com`
 - `AI_REQUEST_TIMEOUT_MS`: 单次模型请求超时时间
 - `AI_MAX_RETRIES`: 可重试模型错误的最大重试次数
 - `AUTO_REVIEW_PR_EVENTS`: 是否自动审阅 PR 事件
@@ -91,41 +157,31 @@ npm start
 
 完整说明见 [.env.example](/home/zcs/WORKSPACE/bot/.env.example:1)。
 
-### DeepSeek
+### 4. 本地部署
 
-默认配置使用 DeepSeek：
+安装依赖并构建：
+
+```bash
+npm install
+cp .env.example .env
+npm run build
+```
+
+本地接收 GitHub webhook 需要公网转发。可以创建 Smee channel，并把地址写入 `.env`：
 
 ```env
-AI_PROVIDER=deepseek
-AI_API_KEY=sk-...
-AI_MODEL=deepseek-v4-pro
-AI_BASE_URL=https://api.deepseek.com
-REASONING_EFFORT=high
+WEBHOOK_PROXY_URL=https://smee.io/your-channel
 ```
 
-DeepSeek 使用 OpenAI-compatible Chat Completions API，机器人会自动切换到 `/chat/completions` 并要求模型返回 JSON。
+启动：
 
-如需切回 OpenAI：
-
-```env
-AI_PROVIDER=openai
-AI_API_KEY=sk-...
-AI_MODEL=gpt-5.5
-AI_BASE_URL=https://api.openai.com/v1
-REASONING_EFFORT=medium
+```bash
+npm start
 ```
 
-### 手动触发
+然后把 GitHub App 的 Webhook URL 临时设置为 Smee URL。
 
-在 PR 评论区发送：
-
-```text
-/review
-```
-
-机器人会立即对该 PR 执行一次审阅。
-
-## 部署
+### 5. 服务器部署
 
 项目提供 PM2 和 Caddy 部署模板：
 
@@ -139,7 +195,7 @@ REASONING_EFFORT=medium
 - 域名：`review.muxai.net`
 - GitHub App Webhook URL：`https://review.muxai.net/api/github/webhooks`
 
-### 准备项目
+准备项目：
 
 ```bash
 git clone <repo-url> tgosbot
@@ -148,14 +204,8 @@ npm ci
 cp .env.example .env
 nano .env
 npm run build
+chmod 600 .env
 ```
-
-生产环境至少需要填写：
-
-- `APP_ID`
-- `PRIVATE_KEY`
-- `WEBHOOK_SECRET`
-- `AI_API_KEY`
 
 建议设置：
 
@@ -167,24 +217,16 @@ AI_MODEL=deepseek-v4-pro
 AI_BASE_URL=https://api.deepseek.com
 ```
 
-保护环境变量文件：
-
-```bash
-chmod 600 .env
-```
-
-### PM2
-
-启动：
+启动 PM2：
 
 ```bash
 pm2 start deploy/pm2/ecosystem.config.cjs
 pm2 save
 ```
 
-PM2 配置会自动以项目根目录作为 `cwd`，不需要把项目固定放在 `/opt/tgosbot`。日志使用 PM2 默认位置，通常是当前用户的 `~/.pm2/logs`，不需要写入 `/var/log/pm2`。
+PM2 配置会自动以项目根目录作为 `cwd`，并在启动时先执行 `npm run build`，因此 `lib/index.js` 不需要提交到仓库。日志使用 PM2 默认位置，通常是当前用户的 `~/.pm2/logs`。
 
-常用命令：
+常用 PM2 命令：
 
 ```bash
 pm2 status
@@ -208,9 +250,7 @@ pm2 startup
 pm2 save
 ```
 
-### Caddy
-
-复制站点配置：
+配置 Caddy：
 
 ```bash
 sudo cp deploy/caddy/review.muxai.net.conf /etc/caddy/sites/review.muxai.net.conf
@@ -226,49 +266,84 @@ import /etc/caddy/sites/*.conf
 
 如果使用其他域名，修改 [deploy/caddy/review.muxai.net.conf](/home/zcs/WORKSPACE/bot/deploy/caddy/review.muxai.net.conf:1) 中的域名，并同步修改 GitHub App 的 Webhook URL。
 
-### GitHub App
+### 6. 部署排查
 
-GitHub App Webhook URL：
+检查 PM2：
 
-```text
-https://review.muxai.net/api/github/webhooks
+```bash
+pm2 status
+pm2 logs tgosbot --lines 50
 ```
 
-Webhook secret 必须和 `.env` 中的 `WEBHOOK_SECRET` 一致。
+检查本地端口：
 
-Repository permissions：
+```bash
+ss -lntp | grep 3456
+curl -i http://127.0.0.1:3456/api/github/webhooks
+```
 
-- Contents: read
-- Pull requests: read and write
-- Issues: read and write
-- Metadata: read
+检查 Caddy 和域名：
 
-Webhook events：
+```bash
+sudo caddy validate --config /etc/caddy/Caddyfile
+curl -Iv https://review.muxai.net/api/github/webhooks
+dig +short review.muxai.net
+```
 
-- Pull request
-- Issue comment
+如果 GitHub Webhook 显示 `failed to connect to host`，优先检查：
 
-### 验证
+- DNS 是否指向服务器
+- Caddy 配置是否加载
+- GitHub App Webhook URL 是否为 `/api/github/webhooks`
+- 服务器 80/443 是否开放
+- PM2 进程是否运行在 `PORT=3456`
+- 是否执行过 `npm ci` 和 `npm run build`
 
-打开一个安装了 GitHub App 的仓库 PR，或在 PR 评论区发送：
+## 使用
+
+### 1. 安装到仓库
+
+进入 GitHub App 页面，点击 `Install App`，选择账号或组织，然后选择：
+
+- All repositories
+- 或 Only select repositories
+
+建议先安装到测试仓库，确认 review 行为符合预期后再扩大范围。
+
+### 2. 自动审阅
+
+安装完成后，目标仓库中的 PR 会在这些事件触发自动审阅：
+
+- PR opened
+- PR reopened
+- PR synchronize, 即 push 新 commit 到 PR 分支
+
+机器人会提交一条 GitHub Review。能定位到新增行的问题会作为 inline comment；无法定位的问题会进入 review summary。
+
+### 3. 手动触发
+
+在 PR 评论区发送：
 
 ```text
 /review
 ```
 
-查看 PM2 日志：
+机器人会立即对该 PR 执行一次审阅。
+
+### 4. 部署后验证
+
+1. 确认 GitHub App 已安装到目标仓库。
+2. 在目标仓库创建一个测试 PR。
+3. 修改一段代码并 push。
+4. 查看 PR Conversation 或 Files changed 页面是否出现 tgosbot review。
+5. 如果没有自动触发，在 PR 评论区发送 `/review`。
+6. 查看服务器日志：
 
 ```bash
-pm2 logs tgosbot
+pm2 logs tgosbot --lines 100
 ```
 
-如果 webhook 未到达，优先检查：
-
-- DNS 是否指向服务器
-- Caddy 配置是否加载
-- GitHub App Webhook URL 是否为 `/api/github/webhooks`
-- `WEBHOOK_SECRET` 是否一致
-- PM2 进程是否运行在 `PORT=3456`
+如果 GitHub App delivery 页面显示 `events: []`，说明 `Subscribe to events` 没有勾选 `Pull request` 和 `Issue comment`。
 
 ## 贡献
 
