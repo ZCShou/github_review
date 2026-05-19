@@ -179,6 +179,12 @@ WEBHOOK_PROXY_URL=https://smee.io/your-channel
 npm start
 ```
 
+测试 AI 连通性：
+
+```bash
+npm run check:ai
+```
+
 然后把 GitHub App 的 Webhook URL 临时设置为 Smee URL。
 
 ### 5. 服务器部署
@@ -299,6 +305,20 @@ dig +short review.muxai.net
 - 服务器 80/443 是否开放
 - PM2 进程是否运行在 `PORT=3456`
 - 是否执行过 `npm ci` 和 `npm run build`
+
+如果日志显示 `AI API request timed out`，说明 webhook 和 GitHub App 已经正常工作，但模型审阅耗时超过 `AI_REQUEST_TIMEOUT_MS`。可以先确认 AI 连通性：
+
+```bash
+npm run check:ai
+```
+
+如果连通性正常，降低审阅输入规模：
+
+```env
+REVIEW_MAX_FILES=10
+REVIEW_MAX_PATCH_CHARS=40000
+AI_MAX_OUTPUT_TOKENS=4000
+```
 
 ## 使用
 

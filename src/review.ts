@@ -18,7 +18,10 @@ export async function createCodeReview(
   input: ReviewInput,
   config: ReviewConfig,
 ): Promise<void> {
-  const pullRequest = await getPullRequest(context, input);
+  const [pullRequest, files] = await Promise.all([
+    getPullRequest(context, input),
+    getPullFiles(context, input),
+  ]);
 
   if (input.reason === "pull_request" && config.skipDuplicateReviews) {
     const alreadyReviewed = await hasReviewedHeadSha(context, input, pullRequest.head.sha);
@@ -28,8 +31,6 @@ export async function createCodeReview(
       return;
     }
   }
-
-  const files = await getPullFiles(context, input);
   const preparedDiff = prepareDiff(files, config);
 
   if (!config.apiKey) {

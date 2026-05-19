@@ -80,9 +80,11 @@ async function requestDeepSeekReview(
     },
     stream: false,
     thinking: {
-      type: "enabled",
+      type: config.reasoningEffort === "disabled" ? "disabled" : "enabled",
     },
-    reasoning_effort: normalizeDeepSeekReasoningEffort(config.reasoningEffort),
+    ...(config.reasoningEffort !== "disabled" && {
+      reasoning_effort: normalizeDeepSeekReasoningEffort(config.reasoningEffort),
+    }),
   });
 
   return parseModelReview(payload);
@@ -320,6 +322,7 @@ function extractChatCompletionContent(payload: unknown): string | undefined {
 }
 
 function normalizeDeepSeekReasoningEffort(reasoningEffort: string): "high" | "max" {
+  // DeepSeek API only supports "high" and "max"; low/medium map to high, xhigh maps to max.
   return reasoningEffort === "max" || reasoningEffort === "xhigh" ? "max" : "high";
 }
 

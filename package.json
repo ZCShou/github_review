@@ -7,6 +7,7 @@
   "main": "lib/index.js",
   "scripts": {
     "build": "tsc",
+    "check:ai": "node scripts/check-ai.mjs",
     "start": "probot run ./lib/index.js",
     "test": "vitest src/config.test.ts src/diff.test.ts src/review.test.ts"
   },
