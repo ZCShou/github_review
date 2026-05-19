@@ -1,11 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  annotatePatch,
-  buildInlineComments,
-  prepareDiff,
-  readReviewConfig,
-} from "./index.js";
+import { readReviewConfig } from "./config.js";
+import { annotatePatch, prepareDiff } from "./diff.js";
 
 describe("diff preparation", () => {
   it("annotates new-file line numbers that can receive inline comments", () => {
@@ -31,7 +27,6 @@ describe("diff preparation", () => {
   });
 
   it("skips lockfiles and files without added lines", () => {
-    const config = readReviewConfig();
     const prepared = prepareDiff(
       [
         {
@@ -51,7 +46,7 @@ describe("diff preparation", () => {
           patch: "@@ -1 +0,0 @@\n-old",
         },
       ],
-      config,
+      readReviewConfig(),
     );
 
     expect(prepared.files).toHaveLength(0);
@@ -60,57 +55,42 @@ describe("diff preparation", () => {
       "src/remove.ts (no added lines)",
     ]);
   });
-});
 
-describe("inline comments", () => {
-  it("keeps only model findings that point at added diff lines", () => {
+  it("prioritizes source files before docs and tests when patch budget is limited", () => {
     const prepared = prepareDiff(
       [
+        {
+          filename: "README.md",
+          status: "modified",
+          additions: 1,
+          deletions: 0,
+          changes: 1,
+          patch: "@@ -1 +1,2 @@\n title\n+docs",
+        },
+        {
+          filename: "src/example.test.ts",
+          status: "modified",
+          additions: 1,
+          deletions: 0,
+          changes: 1,
+          patch: "@@ -1 +1,2 @@\n test\n+expect(value).toBe(true);",
+        },
         {
           filename: "src/example.ts",
           status: "modified",
           additions: 1,
           deletions: 0,
           changes: 1,
-          patch: "@@ -4,1 +4,2 @@\n const old = true;\n+dangerousCall();",
+          patch: "@@ -1 +1,2 @@\n export const value = true;\n+export const next = false;",
         },
       ],
-      readReviewConfig(),
-    );
-
-    const result = buildInlineComments(
       {
-        summary: "发现一个问题。",
-        general_comments: [],
-        findings: [
-          {
-            path: "src/example.ts",
-            line: 5,
-            severity: "high",
-            title: "缺少错误处理",
-            body: "新增调用失败时会直接抛出，可能中断请求。",
-            suggestion: null,
-          },
-          {
-            path: "src/example.ts",
-            line: 4,
-            severity: "medium",
-            title: "错误行号",
-            body: "这一行不是新增行，不能作为 inline 评论。",
-            suggestion: null,
-          },
-        ],
+        ...readReviewConfig(),
+        maxFiles: 1,
       },
-      prepared,
-      readReviewConfig(),
     );
 
-    expect(result.comments).toHaveLength(1);
-    expect(result.comments[0]).toMatchObject({
-      path: "src/example.ts",
-      line: 5,
-      side: "RIGHT",
-    });
-    expect(result.downgradedFindings).toHaveLength(1);
+    expect(prepared.files.map((file) => file.filename)).toEqual(["src/example.ts"]);
+    expect(prepared.truncated).toBe(true);
   });
 });

@@ -8,16 +8,13 @@
   "scripts": {
     "build": "tsc",
     "start": "probot run ./lib/index.js",
-    "test": "vitest src/index.test.ts"
+    "test": "vitest src/diff.test.ts src/review.test.ts"
   },
   "dependencies": {
     "probot": "^14.3.2"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
-    "ioredis": "^5.10.1",
-    "nock": "^14.0.5",
-    "smee-client": "^5.0.0",
     "typescript": "^6.0.3",
     "vitest": "^3.2.4"
   },

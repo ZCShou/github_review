@@ -77,8 +77,13 @@ npm start
 - `OPENAI_MODEL`: 审阅模型，默认 `gpt-5.5`
 - `OPENAI_REASONING_EFFORT`: 推理强度，默认 `medium`
 - `OPENAI_BASE_URL`: OpenAI-compatible API 地址
+- `OPENAI_REQUEST_TIMEOUT_MS`: 单次模型请求超时时间
+- `OPENAI_MAX_RETRIES`: 可重试模型错误的最大重试次数
 - `AUTO_REVIEW_PR_EVENTS`: 是否自动审阅 PR 事件
 - `REVIEW_DRAFTS`: 是否审阅 draft PR
+- `SKIP_DUPLICATE_REVIEWS`: 是否跳过同一 PR head SHA 的重复自动审阅
+- `POST_FAILURE_REVIEWS`: 自动审阅失败时是否在 PR 中发布失败说明
+- `ENABLE_REVIEW_SUGGESTIONS`: 是否允许发布 GitHub suggestion block
 - `REVIEW_MAX_FILES`: 单次送审最大文件数
 - `REVIEW_MAX_PATCH_CHARS`: 单次送审最大 patch 字符数
 - `REVIEW_MAX_INLINE_COMMENTS`: 单次 review 最多 inline 评论数
