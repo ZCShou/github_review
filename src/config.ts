@@ -11,7 +11,7 @@ export function readReviewConfig(): ReviewConfig {
     autoReviewPrEvents: readBooleanEnv("AUTO_REVIEW_PR_EVENTS", true),
     reviewDrafts: readBooleanEnv("REVIEW_DRAFTS", false),
     skipDuplicateReviews: readBooleanEnv("SKIP_DUPLICATE_REVIEWS", true),
-    postFailureReviews: readBooleanEnv("POST_FAILURE_REVIEWS", false),
+    postFailureReviews: readBooleanEnv("POST_FAILURE_REVIEWS", true),
     enableSuggestions: readBooleanEnv("ENABLE_REVIEW_SUGGESTIONS", false),
     model: readModel(provider),
     reasoningEffort: process.env.REASONING_EFFORT ?? defaultReasoningEffort(provider),
